@@ -1,150 +1,222 @@
 const mineflayer = require('mineflayer');
 const { Movements, pathfinder, goals: { GoalBlock } } = require('mineflayer-pathfinder');
-const config = require('./settings.json');
+// Note: This file assumes './settings.json' is available.
+const config = require('./settings.json'); 
 const express = require('express');
 
 const app = express();
+const port = 5000; // Using the user-defined port
 
+// =======================================================
+// 1. Custom Logging Setup (Intercepts all console.log calls)
+// =======================================================
+const serverLogs = [];
+const originalConsoleLog = console.log;
+
+// Override console.log to capture messages and still print them to the terminal
+console.log = function(...args) {
+    // Convert arguments (strings, objects) into a single log message
+    // Also stripping Minecraft color codes (like \x1b[33m) for cleaner web display
+    const message = args
+        .map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
+        .join(' ')
+        .replace(/\x1b\[\d+m/g, ''); // Regex to strip terminal color codes
+        
+    const timestamp = new Date().toISOString();
+    const logEntry = `${timestamp} - ${message}`;
+    
+    // Store the message to be sent to the client
+    serverLogs.push(logEntry);
+    
+    // Call the original console.log function to ensure it still prints on the server terminal
+    originalConsoleLog.apply(console, args);
+};
+
+// =======================================================
+// 2. Route Configuration
+// =======================================================
+
+// --- Root Endpoint for Status Check and Log Display ---
 app.get('/', (req, res) => {
-  res.send('Bot has arrived');
+    // This log message is captured and added to the serverLogs array
+    console.log('Incoming request received at the root route. Displaying captured logs.'); 
+    
+    // Format the captured logs into an HTML list
+    const logList = serverLogs.map(log => `<li>${log}</li>`).join('');
+    
+    // Crucially, we use ONE res.send() call to return the fixed status message 
+    // AND the entire history of captured logs.
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>AfkBot Server Status</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+                body { font-family: 'Inter', sans-serif; }
+            </style>
+        </head>
+        <body class="bg-gray-800 text-gray-200 p-6 md:p-10 rounded-lg">
+            <div class="max-w-4xl mx-auto bg-gray-900 p-6 rounded-xl shadow-2xl">
+                <h1 class="text-3xl font-bold mb-4 text-blue-400 border-b pb-2 border-gray-700">Minecraft Bot Status & Logs</h1>
+                
+                <div class="bg-green-700/30 p-4 rounded-lg border border-green-600 mb-6">
+                    <p class="text-xl font-mono text-green-300">Bot has arrived</p>
+                </div>
+
+                <h2 class="text-xl font-semibold mb-3 text-gray-300">Captured Bot Console Output</h2>
+                <div class="bg-gray-800 p-4 rounded-lg shadow-inner">
+                    <ul class="space-y-1 text-sm h-96 overflow-y-auto" id="log-list">
+                        ${logList || '<li class="text-gray-500">Waiting for bot activity...</li>'}
+                    </ul>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
-app.listen(5000, '0.0.0.0', () => {
-  console.log('Server started on port 5000');
+app.listen(port, '0.0.0.0', () => {
+    // This log message is captured and displayed on the website
+    console.log(`Web Server started on port ${port} (0.0.0.0)`);
 });
+
+// =======================================================
+// 3. Minecraft Bot Logic (Original code preserved)
+// =======================================================
 
 function createBot() {
-  const bot = mineflayer.createBot({
-    username: config['bot-account']['username'],
-    password: config['bot-account']['password'],
-    auth: config['bot-account']['type'],
-    host: config.server.ip,
-    port: config.server.port,
-    version: config.server.version,
-  });
+  const bot = mineflayer.createBot({
+    username: config['bot-account']['username'],
+    password: config['bot-account']['password'],
+    auth: config['bot-account']['type'],
+    host: config.server.ip,
+    port: config.server.port,
+    version: config.server.version,
+  });
 
-  bot.loadPlugin(pathfinder);
-  const mcData = require('minecraft-data')(bot.version);
-  const defaultMove = new Movements(bot, mcData);
-  bot.settings.colorsEnabled = false;
+  bot.loadPlugin(pathfinder);
+  const mcData = require('minecraft-data')(bot.version);
+  const defaultMove = new Movements(bot, mcData);
+  bot.settings.colorsEnabled = false;
 
-  let pendingPromise = Promise.resolve();
+  let pendingPromise = Promise.resolve();
 
-  function sendRegister(password) {
-    return new Promise((resolve, reject) => {
-      bot.chat(`/register ${password} ${password}`);
-      console.log(`[Auth] Sent /register command.`);
+  function sendRegister(password) {
+    return new Promise((resolve, reject) => {
+      bot.chat(`/register ${password} ${password}`);
+      console.log(`[Auth] Sent /register command.`); // CAPTURED
 
-      bot.once('message', (msg) => {
-        const message = msg.toString();
-        console.log(`[AuthLog] ${message}`);
+      bot.once('message', (msg) => {
+        const message = msg.toString();
+        console.log(`[AuthLog] ${message}`); // CAPTURED
 
-        if (message.includes('successfully registered')) {
-          console.log('[INFO] Registration confirmed.');
-          resolve();
-        } else if (message.includes('already registered')) {
-          console.log('[INFO] Bot was already registered.');
-          resolve();
-        } else {
-          reject(`[Register ERROR] Message: "${message}"`);
-        }
-      });
-    });
-  }
+        if (message.includes('successfully registered')) {
+          console.log('[INFO] Registration confirmed.'); // CAPTURED
+          resolve();
+        } else if (message.includes('already registered')) {
+          console.log('[INFO] Bot was already registered.'); // CAPTURED
+          resolve();
+        } else {
+          reject(`[Register ERROR] Message: "${message}"`);
+        }
+      });
+    });
+  }
 
-  function sendLogin(password) {
-    return new Promise((resolve, reject) => {
-      bot.chat(`/login ${password}`);
-      console.log(`[Auth] Sent /login command.`);
+  function sendLogin(password) {
+    return new Promise((resolve, reject) => {
+      bot.chat(`/login ${password}`);
+      console.log(`[Auth] Sent /login command.`); // CAPTURED
 
-      bot.once('message', (msg) => {
-        const message = msg.toString();
-        console.log(`[AuthLog] ${message}`);
+      bot.once('message', (msg) => {
+        const message = msg.toString();
+        console.log(`[AuthLog] ${message}`); // CAPTURED
 
-        if (message.includes('successfully logged in')) {
-          console.log('[INFO] Login successful.');
-          resolve();
-        } else if (message.includes('Invalid password')) {
-          reject(`[Login ERROR] Invalid password. Message: "${message}"`);
-        } else if (message.includes('not registered')) {
-          reject(`[Login ERROR] Not registered. Message: "${message}"`);
-        } else {
-          reject(`[Login ERROR] Unexpected message: "${message}"`);
-        }
-      });
-    });
-  }
+        if (message.includes('successfully logged in')) {
+          console.log('[INFO] Login successful.'); // CAPTURED
+          resolve();
+        } else if (message.includes('Invalid password')) {
+          reject(`[Login ERROR] Invalid password. Message: "${message}"`);
+        } else if (message.includes('not registered')) {
+          reject(`[Login ERROR] Not registered. Message: "${message}"`);
+        } else {
+          reject(`[Login ERROR] Unexpected message: "${message}"`);
+        }
+      });
+    });
+  }
 
-  bot.once('spawn', () => {
-    console.log('\x1b[33m[AfkBot] Bot joined the server\x1b[0m');
+  bot.once('spawn', () => {
+    // Color codes are stripped by the custom console.log function
+    console.log('[AfkBot] Bot joined the server'); // CAPTURED
 
-    // Auto Auth
-    if (config.utils['auto-auth'].enabled) {
-      console.log('[INFO] Started auto-auth module');
-      const password = config.utils['auto-auth'].password;
+    // Auto Auth
+    if (config.utils['auto-auth'].enabled) {
+      console.log('[INFO] Started auto-auth module'); // CAPTURED
+      const password = config.utils['auto-auth'].password;
 
-      pendingPromise = pendingPromise
-        .then(() => sendRegister(password))
-        .then(() => sendLogin(password))
-        .catch(error => console.error('[ERROR]', error));
-    }
+      pendingPromise = pendingPromise
+        .then(() => sendRegister(password))
+        .then(() => sendLogin(password))
+        .catch(error => console.error('[ERROR]', error)); // CAPTURED
+    }
 
-    // Move to position
-    if (config.position.enabled) {
-      const pos = config.position;
-      console.log(
-        `\x1b[32m[AfkBot] Moving to target location (${pos.x}, ${pos.y}, ${pos.z})\x1b[0m`
-      );
-      bot.pathfinder.setMovements(defaultMove);
-      bot.pathfinder.setGoal(new GoalBlock(pos.x, pos.y, pos.z));
-    }
+    // Move to position
+    if (config.position.enabled) {
+      const pos = config.position;
+      console.log(
+        `[AfkBot] Moving to target location (${pos.x}, ${pos.y}, ${pos.z})` // CAPTURED
+      );
+      bot.pathfinder.setMovements(defaultMove);
+      bot.pathfinder.setGoal(new GoalBlock(pos.x, pos.y, pos.z));
+    }
 
-    // Anti-AFK (periodic jump/sneak)
-    if (config.utils['anti-afk'].enabled) {
-      console.log('[INFO] Started anti-afk module');
-      setInterval(() => {
-        bot.setControlState('jump', true);
-        setTimeout(() => bot.setControlState('jump', false), 500);
+    // Anti-AFK (periodic jump/sneak)
+    if (config.utils['anti-afk'].enabled) {
+      console.log('[INFO] Started anti-afk module'); // CAPTURED
+      setInterval(() => {
+        bot.setControlState('jump', true);
+        setTimeout(() => bot.setControlState('jump', false), 500);
 
-        if (config.utils['anti-afk'].sneak) {
-          bot.setControlState('sneak', true);
-          setTimeout(() => bot.setControlState('sneak', false), 500);
-        }
-      }, 10000); // every 10s
-    }
-  });
+        if (config.utils['anti-afk'].sneak) {
+          bot.setControlState('sneak', true);
+          setTimeout(() => bot.setControlState('sneak', false), 500);
+        }
+      }, 10000); // every 10s
+    }
+  });
 
-  bot.on('goal_reached', () => {
-    console.log(
-      `\x1b[32m[AfkBot] Bot arrived at the target location. ${bot.entity.position}\x1b[0m`
-    );
-  });
+  bot.on('goal_reached', () => {
+    console.log(
+      `[AfkBot] Bot arrived at the target location. ${bot.entity.position}` // CAPTURED
+    );
+  });
 
-  bot.on('death', () => {
-    console.log(
-      `\x1b[33m[AfkBot] Bot has died and was respawned at ${bot.entity.position}\x1b[0m`
-    );
-  });
+  bot.on('death', () => {
+    console.log(
+      `[AfkBot] Bot has died and was respawned at ${bot.entity.position}` // CAPTURED
+    );
+  });
 
-  // Auto Reconnect
-  if (config.utils['auto-reconnect']) {
-    bot.on('end', () => {
-      console.log('[INFO] Disconnected. Reconnecting...');
-      setTimeout(() => createBot(), config.utils['auto-reconnect-delay']);
-    });
-  }
+  // Auto Reconnect
+  if (config.utils['auto-reconnect']) {
+    bot.on('end', () => {
+      console.log('[INFO] Disconnected. Reconnecting...'); // CAPTURED
+      setTimeout(() => createBot(), config.utils['auto-reconnect-delay']);
+    });
+  }
 
-  bot.on('kicked', (reason) =>
-    console.log(
-      '\x1b[33m',
-      `[AfkBot] Bot was kicked from the server. Reason: \n${reason}`,
-      '\x1b[0m'
-    )
-  );
+  bot.on('kicked', (reason) =>
+    console.log(
+      `[AfkBot] Bot was kicked from the server. Reason: \n${reason}` // CAPTURED
+    )
+  );
 
-  bot.on('error', (err) =>
-    console.log(`\x1b[31m[ERROR] ${err.message}\x1b[0m`)
-  );
+  bot.on('error', (err) =>
+    console.log(`[ERROR] ${err.message}`) // CAPTURED
+  );
 }
 
 createBot();
