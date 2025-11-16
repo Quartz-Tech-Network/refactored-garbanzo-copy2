@@ -1,0 +1,22 @@
+    name: Run Node.js Script
+
+    on: [push] # Trigger the workflow on every push to the repository
+
+    jobs:
+      run-script:
+        runs-on: ubuntu-latest # Specify the runner environment
+
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v4 # Action to check out your repository code
+
+          - name: Set up Node.js
+            uses: actions/setup-node@v4 # Action to set up Node.js
+            with:
+              node-version: '18' # Specify the Node.js version you want to use
+
+          - name: Install dependencies (optional)
+            run: npm install # Run npm install if your index.js has dependencies
+
+          - name: Run Node.js script
+            run: node index.js # The shell command to execute your Node.js script
