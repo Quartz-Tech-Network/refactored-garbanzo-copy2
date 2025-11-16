@@ -8,17 +8,19 @@ const app = express();
 const port = 5000; // Using the user-defined port
 
 // =======================================================
-// 1. Custom Logging Setup (Intercepts all console.log calls)
+// 1. Custom Logging Setup (Intercepts all console.log and console.error calls)
 // =======================================================
 const serverLogs = [];
 const originalConsoleLog = console.log;
+// Store the original console.error function to preserve its functionality
+const originalConsoleError = console.error; 
 
-// Override console.log to capture messages and still print them to the terminal
-console.log = function(...args) {
+// Function to process, store, and format the message
+const captureLog = (...args) => {
     // Convert arguments (strings, objects) into a single log message
-    // Also stripping Minecraft color codes (like \x1b[33m) for cleaner web display
+    // Using JSON.stringify(..., null, 2) for cleaner object/error output
     const message = args
-        .map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
+        .map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg))
         .join(' ')
         .replace(/\x1b\[\d+m/g, ''); // Regex to strip terminal color codes
         
@@ -27,9 +29,21 @@ console.log = function(...args) {
     
     // Store the message to be sent to the client
     serverLogs.push(logEntry);
-    
+};
+
+// Override console.log
+console.log = function(...args) {
+    captureLog(...args);
     // Call the original console.log function to ensure it still prints on the server terminal
     originalConsoleLog.apply(console, args);
+};
+
+// Override console.error (Crucial for capturing errors from promises and mineflayer)
+console.error = function(...args) {
+    // Prepend a clear indicator that this was logged via console.error
+    captureLog('CRITICAL ERROR:', ...args);
+    // Then call the original console.error function
+    originalConsoleError.apply(console, args);
 };
 
 // =======================================================
@@ -160,7 +174,7 @@ function createBot() {
       pendingPromise = pendingPromise
         .then(() => sendRegister(password))
         .then(() => sendLogin(password))
-        .catch(error => console.error('[ERROR]', error)); // CAPTURED
+        .catch(error => console.error('[ERROR]', error)); // CAPTURED (uses console.error)
     }
 
     // Move to position
