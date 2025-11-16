@@ -1,16 +1,16 @@
 {
   "bot-account": {
-    "username": "AFKBot",
+    "username": "ParrotX2", 
     "password": "",
     "type": "mojang"
   },
 
   "server": {
-    "ip": "BossCrayon.aternos.me",
-    "port": 21783,
-    "version": "1.12.1"
+    "ip": "LordElius.aternos.me", 
+    "port": 29354,   
+    "version": "1.12.1"   
   },
-  
+
   "position": {
     "enabled": false,
     "x": 0,
@@ -29,8 +29,21 @@
       "sneak": true
     },
 
+    "chat-messages": {
+      "enabled": true,
+      "repeat": true,
+      "repeat-delay": 60,
+
+      "messages": [
+        "im a parrot",
+        "im the biggest bird",
+        "im lowkey a parrot",
+        "im a cool bird"
+      ]
+    },
+
     "chat-log": true,
     "auto-reconnect": true,
-    "auto-reconnect-delay": 5000
+    "auto-recconect-delay": 5000
   }
 }
