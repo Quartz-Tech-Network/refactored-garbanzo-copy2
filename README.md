@@ -16,7 +16,7 @@
 
 ## Tutorial
 
-1. Please Watch This Quick 3 Minute Video [HERE](https://www.youtube.com/watch?v=92khf57AfpE) And Consider Subscribing.
+1. Please Watch This Quick 3 Minute Video [HERE](https://www.youtube.com/watch?v=92khf57AfpE).
 2. For Any Questions Please Join My Discord Server And Create a Ticket. [HERE](https://discord.gg/MgfBNqxSA9)
 3. Fork The Code by pressing on the top Right.
 4. Like the Code So I can Keep Updating it!
