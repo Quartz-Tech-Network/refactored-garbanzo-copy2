@@ -1,3 +1,11 @@
+const mineflayer = require('mineflayer');
+const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
+const { GoalBlock } = goals;
+
+const express = require('express');
+const fs = require('fs');
+const config = require('./settings.json');
+
 function createBot() {
   const bot = mineflayer.createBot({
     username: config['bot-account']['username'],
