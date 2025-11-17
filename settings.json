@@ -1,14 +1,14 @@
 {
   "bot-account": {
-    "username": "ParrotX2", 
+    "username": "ParrotX2",
     "password": "",
-    "type": "mojang"
+    "type": "offline"
   },
 
   "server": {
-    "ip": "LordElius.aternos.me", 
-    "port": 29354,   
-    "version": "1.12.1"   
+    "ip": "LordElius.aternos.me",
+    "port": 29354,
+    "version": "1.12.2"
   },
 
   "position": {
@@ -33,7 +33,6 @@
       "enabled": true,
       "repeat": true,
       "repeat-delay": 60,
-
       "messages": [
         "im a parrot",
         "im the biggest bird",
@@ -44,6 +43,6 @@
 
     "chat-log": true,
     "auto-reconnect": true,
-    "auto-recconect-delay": 5000
+    "auto-reconnect-delay": 5000
   }
 }
